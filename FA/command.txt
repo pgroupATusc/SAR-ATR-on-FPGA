@@ -1,0 +1,13 @@
+g++ -g -std=c++17 -Wall -O0 ../src/host.cpp -o ./app.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+
+g++ -g -std=c++17 -Wall -O0 ../src/hostv2.cpp -o ./app2.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+
+
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k feagg_top -I../src ../src/feagg.cpp -o ./feagg_top.xo 
+v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg ./feagg_top.xo -o ./feagg_top.xclbin
+export XCL_EMULATION_MODE=sw_emu
+
+## hardware 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k feagg_top -I../src ../src/feagg.cpp -o ./feagg_top.xo --hls.clock 500000000:feagg_top
+v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg ./feagg_top.xo -o ./feagg_top.xclbin  --kernel_frequency 200 --clock.freqHz 200000000:feagg_top_1 --clock.defaultTolerance 0.30

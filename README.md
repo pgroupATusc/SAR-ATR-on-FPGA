@@ -1,4 +1,4 @@
-# GNN-for-SAR-ATR-on-FPGA
+# GNN Inference for SAR-ATR on FPGA
 
 This is our demo work at FCCM 2023. The source code is based on our paper on Accelerating GNN-Based SAR Automatic Target Recognition on HBM-Enabled FPGA.
 

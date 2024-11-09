@@ -6,7 +6,7 @@ This is our demo work at FCCM 2023. The source code is based on our paper on Acc
 Bingyi Zhang
 
 ## Requirement 
-1. Vitis Unified Software Platform - Target hardware Alveo U280
+1. Vitis Unified Software Platform (2023) - Target hardware Alveo U280
 2. Python3
 
 ## Introduction

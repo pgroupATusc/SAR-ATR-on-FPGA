@@ -1,0 +1,104 @@
+g++ -g -std=c++17 -Wall -O0 ../src/host.cpp -o ./app.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+g++ -g -std=c++17 -Wall -O0 ../src/hostv5_ft.cpp -o ./app5.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+
+
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k mmult -I../src ../src/mmultv5.cpp -o ./mmult.xo 
+v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg ./mmult.xo -o ./mmult.xclbin
+export XCL_EMULATION_MODE=sw_emu
+
+## hardware 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k mmult -I../src ../src/mmultv5.cpp -o ./mmult.xo 
+nohup v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg ./mmult.xo -o ./mmult.xclbin --kernel_frequency 180 > synthesis.log &
+
+
+// version 9
+export XCL_EMULATION_MODE=sw_emu
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k mmult -I../src ../src/mmultv9.cpp -o ./mmult.xo 
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k read_AX_fromDDR_bank -I../src ../src/dataLoad.cpp -o ./read_AX_fromDDR_bank.xo 
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k store_output_matrix -I../src ../src/dataStore.cpp -o ./store_output_matrix.xo 
+
+
+v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_v9.cfg ./mmult.xo ./read_AX_fromDDR_bank.xo ./store_output_matrix.xo   -o ./combine_top.xclbin
+
+g++ -g -std=c++17 -Wall -O0  ../src/hostv9_ft.cpp -o ./app_combine.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+
+
+
+// version 9 hw
+export XCL_EMULATION_MODE=sw_emu
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k mmult -I../src ../src/mmultv9.cpp -o ./mmult.xo 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k read_AX_fromDDR_bank -I../src ../src/dataLoad.cpp -o ./read_AX_fromDDR_bank.xo 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k store_output_matrix -I../src ../src/dataStore.cpp -o ./store_output_matrix.xo 
+
+
+v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_v9.cfg ./mmult.xo ./read_AX_fromDDR_bank.xo ./store_output_matrix.xo   -o ./combine_top.xclbin
+nohup v++ -l -t hw --vivado.synth.jobs 40  --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_v9.cfg ./mmult.xo ./read_AX_fromDDR_bank.xo ./store_output_matrix.xo  -o ./combine_top.xclbin --kernel_frequency 150 > synthesis.log & disown
+
+
+g++ -g -std=c++17 -Wall -O0  ../src/hostv9_ft.cpp -o ./app_combine.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+
+
+
+// version 12
+export XCL_EMULATION_MODE=sw_emu
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k layerone -I../src ../src/layerone.cpp -o ./layerone.xo 
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k read_AX_fromDDR_bank -I../src ../src/dataLoad12.cpp -o ./read_AX_fromDDR_bank.xo 
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k store_output_matrix -I../src ../src/dataStore12.cpp -o ./store_output_matrix.xo 
+
+
+v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_v12.cfg ./layerone.xo ./read_AX_fromDDR_bank.xo ./store_output_matrix.xo   -o ./combine_top.xclbin
+
+g++ -g -std=c++17 -Wall -O0  ../src/hostv12.cpp -o ./app_combine.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+
+
+
+// version 12
+export XCL_EMULATION_MODE=sw_emu
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k layerone -I../src ../src/layerone.cpp -o ./layerone.xo 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k read_AX_fromDDR_bank -I../src ../src/dataLoad12.cpp -o ./read_AX_fromDDR_bank.xo 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k store_output_matrix -I../src ../src/dataStore12.cpp -o ./store_output_matrix.xo 
+
+
+nohup v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_v12.cfg ./layerone.xo ./read_AX_fromDDR_bank.xo ./store_output_matrix.xo  --kernel_frequency 250  -o ./combine_top.xclbin > sythesis.log & disown
+
+g++ -g -std=c++17 -Wall -O0  ../src/hostv12.cpp -o ./app_combine.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+
+
+
+// version 13
+export XCL_EMULATION_MODE=sw_emu
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k layerone -I../src ../src/layerone13.cpp -o ./layerone.xo 
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k read_AX_fromDDR_bank -I../src ../src/dataLoad13.cpp -o ./read_AX_fromDDR_bank.xo 
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k store_output_matrix -I../src ../src/dataStore13.cpp -o ./store_output_matrix.xo 
+
+
+v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_v13.cfg ./layerone.xo ./read_AX_fromDDR_bank.xo ./store_output_matrix.xo   -o ./combine_top.xclbin
+
+g++ -g -std=c++17 -Wall -O0  ../src/hostv13.cpp -o ./app_combine.exe -I/opt/xilinx/xrt/include/ -I/tools/Xilinx/Vivado/2022.2/include/ -DHLS_NO_XIL_FPO_LIB -I../src -I/tools/Xilinx/Vitis_HLS/2022.2/include/ -L/tools/Xilinx/Vivado/2022.2/lib/ -L/tools/Xilinx/Vitis_HLS/2022.2/lib/ -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+
+
+
+// version 13
+export XCL_EMULATION_MODE=sw_emu
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k layerone -I../src ../src/layerone13.cpp -o ./layerone.xo 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k read_AX_fromDDR_bank -I../src ../src/dataLoad13.cpp -o ./read_AX_fromDDR_bank.xo 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_ini.cfg -k store_output_matrix -I../src ../src/dataStore13.cpp -o ./store_output_matrix.xo 
+
+
+v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_v13.cfg ./layerone.xo ./read_AX_fromDDR_bank.xo ./store_output_matrix.xo   -o ./combine_top.xclbin
+
+g++ -g -std=c++17 -Wall -O0  ../src/hostv13.cpp -o ./app_combine.exe -I/opt/xilinx/xrt/include/ -I/tools/Xilinx/Vivado/2022.2/include/ -DHLS_NO_XIL_FPO_LIB -I../src -I/tools/Xilinx/Vitis_HLS/2022.2/include/ -L/tools/Xilinx/Vivado/2022.2/lib/ -L/tools/Xilinx/Vitis_HLS/2022.2/lib/ -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++

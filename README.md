@@ -14,9 +14,7 @@ Synthetic Aperture Radar (SAR) automatic target recognition (ATR) is a key techn
 
 ## Demo Execution in Target hardware
 
-Demo on FPGA:  <code> python ./gui/demo-FPGA.py </code>
-
-Demo on CPU: <code> python ./gui/demo-CPU.py </code>
+Demo on FPGA (GUI interface):  <code> python ./gui/demo-FPGA.py </code>
 
 (Only tested on Alveo U280 connected to a CPU using PCIe)
 

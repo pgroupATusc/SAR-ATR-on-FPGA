@@ -1,0 +1,246 @@
+#include <stdio.h>
+#include <iostream>
+#include <hls_stream.h>
+#include "ap_int.h"
+
+
+#include <datatype.h>
+extern "C"{
+
+void loadweightL1(
+    const v_dt * weight_port,
+    v_dt weight[256][16*16][3]
+){
+    for(int i = 0; i < 256; i++){
+        for(int j = 0; j < 16*16; j ++){
+            for(int k  = 0; k < 3; k++){
+                #pragma HLS loop_flatten
+                #pragma HLS PIPELINE II=1 rewind
+                int index = (i * 16*16 + j) * 3 + k;
+                weight[i][j][k] = weight_port[index];
+            }
+        }
+    }
+}
+
+void loadweightL2(
+    const v_dt * weight_portL2, 
+    v_dt weightL2[256]
+){
+    for(int i = 0; i < 256; i++){
+        #pragma HLS PIPELINE II=1 rewind
+        weightL2[i] = weight_portL2[i];
+    }
+
+}
+
+void loaddata(
+    hls::stream<v_dt> & C_stream1,
+    hls::stream<v_dt> & C_stream2,
+    hls::stream<v_dt> & C_stream3,
+    v_dt featurevector[256][3]
+){
+    for(int i = 0; i < 256; i++){
+        #pragma HLS PIPELINE II=3
+        v_dt tmpIn;
+        #pragma HLS aggregate variable = tmpIn
+        tmpIn = C_stream1.read();
+        featurevector[i][0] = tmpIn;
+        tmpIn = C_stream2.read();
+        featurevector[i][1] = tmpIn;
+        tmpIn = C_stream3.read();
+        featurevector[i][2] = tmpIn;
+    }
+}
+
+
+void computeL1(
+    v_dt featurevector[256][3],
+    v_dt weight[256][256][3],
+    float results[256]
+){
+    for(int i = 0; i < 256; i++){
+        for(int j = 0; j < 3; j ++){
+            for(int k = 0; k < 256; k++){
+                #pragma HLS unroll factor=4
+                #pragma HLS PIPELINE II=1 rewind
+                #pragma HLS dependence variable=results type=inter false
+
+                v_dt tmpIn1 = featurevector[i][j];
+                v_dt tmpIn2 = weight[k][i][j];
+                float stage1_p1 = tmpIn1.data[0]* tmpIn2.data[0]  + tmpIn1.data[1] * tmpIn2.data[1];
+                float stage1_p2 = tmpIn1.data[2]* tmpIn2.data[2]  + tmpIn1.data[3] * tmpIn2.data[3];
+                float stage1_p3 = tmpIn1.data[4]* tmpIn2.data[4]  + tmpIn1.data[5] * tmpIn2.data[5];
+                float stage1_p4 = tmpIn1.data[6]* tmpIn2.data[6]  + tmpIn1.data[7] * tmpIn2.data[7];
+                float stage1_p5 = tmpIn1.data[8]* tmpIn2.data[8]  + tmpIn1.data[9] * tmpIn2.data[9];
+                float stage1_p6 = tmpIn1.data[10]*tmpIn2.data[10] + tmpIn1.data[11]*tmpIn2.data[11];
+                float stage1_p7 = tmpIn1.data[12]*tmpIn2.data[12] + tmpIn1.data[13]*tmpIn2.data[13];
+                float stage1_p8 = tmpIn1.data[14]*tmpIn2.data[14] + tmpIn1.data[15]*tmpIn2.data[15];
+
+                float stage2_p1 = stage1_p1 + stage1_p2;
+                float stage2_p2 = stage1_p3 + stage1_p4;
+                float stage2_p3 = stage1_p5 + stage1_p6;
+                float stage2_p4 = stage1_p7 + stage1_p8;
+
+                float stage3_p1 = stage2_p1 + stage2_p2;
+                float stage3_p2 = stage2_p3 + stage2_p4;
+
+                float tmpresult = stage3_p1 + stage3_p2;
+                
+                if(i == 0 & j == 0) {results[k] = tmpresult;}
+                else {results[k] += tmpresult;}
+            }
+        }
+    }
+}
+
+
+
+void computeL2(
+    float results[256], 
+    v_dt weightL2[256], 
+    v_dt & resultL2
+){
+    for(int i = 0; i < 16; i++){
+        #pragma HLS unroll
+        resultL2.data[i] = 0;
+    }
+    for(int i = 0; i < 256; i++){
+        #pragma HLS PIPELINE 
+        int coeff = results[i];
+        v_dt tmpIn = weightL2[i];
+        for(int j = 0; j < 10; j++){
+            #pragma HLS unroll
+            resultL2.data[i] += coeff * tmpIn.data[i];
+        }
+    }
+}
+
+
+void storeResult(
+    v_dt * result_port, 
+    v_dt resultL2
+){
+    result_port[0] = resultL2;
+}
+
+void mlp(
+    hls::stream<v_dt> C_stream1,
+    hls::stream<v_dt> C_stream2,
+    hls::stream<v_dt> C_stream3,
+    const v_dt * weight_port,
+    const v_dt * weight_portL2,
+    int loadweight,
+    v_dt * result_port
+){
+    #pragma HLS aggregate variable = weight_port
+    #pragma HLS aggregate variable = weight_portL2
+    #pragma HLS aggregate variable = result_port
+
+    #pragma HLS INTERFACE mode=m_axi port = weight_port offset = slave bundle = gmem0
+    #pragma HLS INTERFACE mode=m_axi port = weight_portL2 offset = slave bundle = gmem0
+    #pragma HLS INTERFACE mode=m_axi port = result_port offset = slave bundle = gmem0
+    #pragma HLS INTERFACE mode=axis port=C_stream1
+    #pragma HLS INTERFACE mode=axis port=C_stream2
+    #pragma HLS INTERFACE mode=axis port=C_stream3
+
+    #pragma HLS INTERFACE s_axilite port = weight_port bundle = control
+    #pragma HLS INTERFACE s_axilite port = weight_portL2 bundle = control
+    #pragma HLS INTERFACE s_axilite port = result_port bundle = control
+    #pragma HLS INTERFACE s_axilite port = loadweight bundle = control
+
+    #pragma HLS INTERFACE s_axilite port = return bundle = control
+
+
+    v_dt featurevector[256][3];
+    #pragma HLS aggregate variable = featurevector
+
+    static v_dt weight[256][256][3];
+    #pragma HLS aggregate variable=weight
+    #pragma HLS array_partition variable=weight type=cyclic factor=4  dim=1
+
+    static v_dt weightL2[256];
+
+    float results[256];
+    #pragma HLS array_partition variable=results type=cyclic factor=4  dim=1
+
+    v_dt resultL2;
+
+    if(loadweight == 1){
+        loadweightL1(weight_port, weight);
+        loadweightL2(weight_portL2, weightL2);
+    }
+    else{
+        loaddata(C_stream1, C_stream2, C_stream3, featurevector);
+        computeL1(featurevector, weight, results);
+        computeL2(results, weightL2, resultL2);
+        storeResult(result_port, resultL2);
+    }
+}
+
+
+void dataloader(
+     const v_dt * input_port,
+     hls::stream<v_dt> C_stream
+){
+    #pragma HLS FUNCTION_INSTANTIATE variable=input_port
+
+    for(int i = 0; i < 256; i++){
+        #pragma HLS PIPELINE II=1
+        v_dt tmpIn;
+        #pragma HLS aggregate variable = tmpIn
+
+        tmpIn = input_port[i];
+        C_stream << tmpIn;
+    }
+}
+
+
+void initcompute(
+
+){
+
+}
+
+void mlp_top(
+    const v_dt * input_port1,
+    const v_dt * input_port2,
+    const v_dt * input_port3,
+    const v_dt * weight_port,
+    const v_dt * weight_portL2,
+    v_dt * result_port,
+    int loadweight
+){
+    #pragma HLS aggregate variable = input_port1
+    #pragma HLS aggregate variable = input_port2
+    #pragma HLS aggregate variable = input_port3
+
+    #pragma HLS INTERFACE mode=m_axi port = input_port1 offset = slave bundle = gmem0
+    #pragma HLS INTERFACE mode=m_axi port = input_port2 offset = slave bundle = gmem1
+    #pragma HLS INTERFACE mode=m_axi port = input_port3 offset = slave bundle = gmem3
+
+    #pragma HLS INTERFACE s_axilite port = input_port1 bundle = control
+    #pragma HLS INTERFACE s_axilite port = input_port2 bundle = control
+    #pragma HLS INTERFACE s_axilite port = input_port3 bundle = control
+
+    #pragma HLS INTERFACE s_axilite port = return bundle = control
+
+    hls::stream<v_dt> C_stream[3];
+    #pragma HLS STREAM variable=C_stream depth=16 type=fifo
+    #pragma HLS ARRAY_PARTITION variable=C_stream dim=1 complete
+
+    if(loadweight == 1){
+        mlp(C_stream[0], C_stream[1], C_stream[2],
+            weight_port, weight_portL2, loadweight, result_port);
+    }
+    else{
+        initcompute(input_port1, input_port2, input_port3, 
+            weight_port, weight_portL2, loadweight, result_port);
+    }
+
+
+}
+
+
+
+}

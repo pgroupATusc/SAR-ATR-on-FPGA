@@ -1,0 +1,14 @@
+emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1
+export XCL_EMULATION_MODE=sw_emu
+
+
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k dataloader -I../src ../src/dataloader.cpp -o ./dataloader.xo 
+v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k mlp -I../src ../src/mlp.cpp -o ./mlp.xo 
+v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_combine.cfg -I../src ./dataloader.xo ./mlp.xo  -o ./combine_top.xclbin
+
+
+g++ -g -std=c++17 -Wall -O0  ../src/host_mlp.cpp -o ./app_combine.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++
+
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k dataloader -I../src ../src/dataloader.cpp -o ./dataloader.xo 
+v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k mlp -I../src ../src/mlp.cpp -o ./mlp.xo 
+nohup v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_combine.cfg -I../src ./dataloader.xo ./mlp.xo  -o ./combine_top.xclbin --kernel_frequency 200 > synthesis.log &

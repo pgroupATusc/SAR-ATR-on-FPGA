@@ -27,18 +27,51 @@ Before execution, download large source files using links in each folder, 'link_
 
 <code> emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1 </code>
 
+## Setup
 
-## software simulation
-<code> v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k mmult -I../src ../src/mmultv2.cpp -o ./mmult.xo </code>
-
-<code> v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg ./mmult.xo -o ./mmult.xclbin </code>
-
+<code> emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1 </code>
 <code> export XCL_EMULATION_MODE=sw_emu </code>
 
-## hardware 
-<code> v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg -k mmult -I../src ../src/mmultv2.cpp -o ./mmult.xo </code>
 
-<code> v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280.cfg ./mmult.xo -o ./mmult.xclbin  --kernel_frequency 200 </code>
+<code> v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../../FT/src/u280.cfg -k mmult -I../src ../src/mmultv7.cpp -o ./mmult.xo  </code>
+<code> v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../../FA/src/u280.cfg -k feagg_top -I../src ../src/feaggv7.cpp -o ./feagg_top.xo  </code>
+<code> v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer.cfg ./feagg_top.xo ./mmult.xo  -o ./combine_top.xclbin </code>
+
+<code> g++ -g -std=c++17 -Wall -O0 ../src/utils.cpp ../src/host_layer_sw.cpp -o ./app_combine.exe -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++ </code>
+
+
+<code> v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../../FT/src/u280.cfg -k mmult -I../src ../../FT/src/mmultv5.cpp -o ./mmult.xo  </code>
+<code> v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../../FA/src/u280.cfg -k feagg_top -I../src ../../FA/src/feaggv4.cpp -o ./feagg_top.xo  </code>
+<code> nohup v++ -l -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer.cfg ./feagg_top.xo ./mmult.xo  -o ./combine_top.xclbin --kernel_frequency 150 > synthesis.log & </code>
+
+
+## software simulation
+<code> export XCL_EMULATION_MODE=sw_emu </code>
+<code> emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1 </code>
+
+<code> v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k mmult -I../src ../../FT/src/mmultv17.cpp -o ./mmult.xo  </code>
+<code> v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k read_AX_fromDDR_bank -I../src ../../FT/src/dataLoad17.cpp -o ./read_AX_fromDDR_bank.xo  </code>
+<code> v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k store_output_matrix -I../src ../../FT/src/dataStore17.cpp -o ./store_output_matrix.xo  </code>
+<code> v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k feagg_top -I../src ../../FA/src/feaggv17.cpp -o ./feagg_top.xo  </code>
+<code> v++ -c -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k mlp -I../src ../../MLP/src/mlp18.cpp -o ./mlp.xo  </code>
+
+<code> v++ -l -t sw_emu --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layerv16.cfg ./feagg_top.xo ./mmult.xo ./read_AX_fromDDR_bank.xo ./mlp.xo  ./store_output_matrix.xo   -o ./combine_top.xclbin </code>
+
+<code> g++ -g -std=c++17 -Wall -O0 ../src/utils2.cpp ../src/accelerator.cpp ../src/host_layer_sw_v18.cpp -o ./app_combine.exe -I/tools/Xilinx/Vivado/2022.2/include/ -DHLS_NO_XIL_FPO_LIB -I../src -I/tools/Xilinx/Vitis_HLS/2022.2/ include/ -L/tools/Xilinx/Vivado/2022.2/lib/ -L/tools/Xilinx/Vitis_HLS/2022.2/lib/  -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++ </code>
+
+## hardware simulation
+<code> export XCL_EMULATION_MODE=sw_emu </code>
+<code> emconfigutil --platform xilinx_u280_gen3x16_xdma_1_202211_1 </code>
+
+<code> v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k mmult -I../src ../../FT/src/mmultv17.cpp -o ./mmult.xo  </code>
+<code> v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k read_AX_fromDDR_bank -I../src ../../FT/src/dataLoad17.cpp -o ./read_AX_fromDDR_bank.xo  </code>
+<code> v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k store_output_matrix -I../src ../../FT/src/dataStore17.cpp -o ./store_output_matrix.xo  </code>
+<code> v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k feagg_top -I../src ../../FA/src/feaggv17.cpp -o ./feagg_top.xo  </code>
+<code> v++ -c -t hw --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layer_init.cfg -k mlp -I../src ../../MLP/src/mlp18.cpp -o ./mlp.xo  </code>
+
+<code> nohup v++ -l -t hw  --vivado.synth.jobs 64  --platform xilinx_u280_gen3x16_xdma_1_202211_1 --config ../src/u280_layerv16.cfg ./feagg_top.xo ./mlp.xo ./mmult.xo ./read_AX_fromDDR_bank.xo ./store_output_matrix.xo  -o  ./combine_top.xclbin --kernel_frequency 200 > synthesis.log & disown </code>
+
+<code> g++ -g -std=c++17 -Wall -O0 ../src/utils2.cpp ../src/accelerator.cpp ../src/host_layer_sw_v18.cpp -o ./app_combine.exe -I/tools/Xilinx/Vivado/2022.2/include/ -DHLS_NO_XIL_FPO_LIB -I../src -I/tools/Xilinx/Vitis_HLS/2022.2/ include/ -L/tools/Xilinx/Vivado/2022.2/lib/ -L/tools/Xilinx/Vitis_HLS/2022.2/lib/  -I/opt/xilinx/xrt/include/ -I../src -L/opt/xilinx/xrt/lib -lxrt_coreutil  -lpthread -lrt -lstdc++ </code>
 
 
 ## syntheze the feature transformation kernel
